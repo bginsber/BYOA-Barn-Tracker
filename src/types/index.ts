@@ -1,3 +1,5 @@
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 export interface Task {
   id: string;
   title: string;
@@ -12,6 +14,7 @@ export interface Task {
   currentStreak: number;
   bestStreak: number;
   lastCompletedDate?: string;
+  priority?: 'low' | 'medium' | 'high';
 }
 
 export interface CompletionRecord {
@@ -31,4 +34,17 @@ export type TaskFrequency =
   | 'weekly'
   | 'monthly'
   | 'annual'
-  | 'once'; 
+  | 'once';
+
+export type RootStackParamList = {
+  Home: undefined;
+  AddTask: undefined;
+  EditTask: {
+    task: Task;
+  };
+  TaskCalendar: {
+    task: Task;
+  };
+};
+
+export type NavigationProp = NativeStackNavigationProp<RootStackParamList>; 

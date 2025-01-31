@@ -16,12 +16,13 @@ export default function AddTaskScreen() {
           completed: false,
           createdAt: Date.now(),
           userId: 'dummyUserId', // Match the ID we're using in HomeScreen
-          category: 'other', // Default category
+          category: 'Health', // Default category
           frequency: 'daily', // Default frequency
           completionHistory: [],
           currentStreak: 0,
           bestStreak: 0,
-          description: ''
+          description: '',
+          priority: 'high', // Default priority
         });
         navigation.goBack();
       } catch (error) {
@@ -52,22 +53,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#f5f5f5',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   button: {
     backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 5,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 
