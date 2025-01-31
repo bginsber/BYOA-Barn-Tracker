@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { enableIndexedDbPersistence } from 'firebase/firestore';
 
 import {
   FIREBASE_API_KEY,
@@ -31,13 +30,4 @@ const db = getFirestore(app);
 // Initialize Auth
 const auth = getAuth(app);
 
-// Enable persistence for web
-if (typeof window !== 'undefined') {
-
-  try {
-    enableIndexedDbPersistence(db);
-  } catch (err) {
-    console.error('Failed to enable persistence:', err);
-  }
-}
 export { db, auth }; 

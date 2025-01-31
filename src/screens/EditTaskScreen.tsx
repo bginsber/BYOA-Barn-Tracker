@@ -8,13 +8,16 @@ import {
   Alert,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Task
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TaskCategory, TaskFrequency } from '../types';
 import { taskService } from '../services/taskService';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
+import { WeatherAwareScheduling } from '../components/WeatherAwareScheduling';
+import { TaskDocumentation } from '../components/TaskDocumentation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditTask'>;
 
@@ -66,6 +69,45 @@ export const EditTaskScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ]
     );
+  };
+
+  const handleTaskUpdate = async (updates: Partial<Task>) => {
+    try {
+      // Create a new task object with the updates
+      const updatedTask = {
+        ...task,
+        ...updates,
+        // Ensure scheduledTime is properly merged
+        scheduledTime: 'scheduledTime' in updates ? {
+          ...task.scheduledTime,
+          ...(updates as any).scheduledTime,
+        } : task.scheduledTime,
+      };
+
+      // Update local state if needed
+      setTitle(updatedTask.title || title);
+      setCategory(updatedTask.category || category);
+      setFrequency(updatedTask.frequency || frequency);
+      setDescription(updatedTask.description || description);
+
+      // Save to Firebase
+      await taskService.updateTask(task.id, updatedTask);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      Alert.alert('Error', 'Failed to update task settings');
+    }
+  };
+
+  const handlePhotoAdded = async (photoUrl: string) => {
+    try {
+      await taskService.updateTask(task.id, {
+        ...task,
+        photos: [...(task.photos || []), photoUrl],
+      });
+    } catch (error) {
+      console.error('Error adding photo:', error);
+      Alert.alert('Error', 'Failed to save photo');
+    }
   };
 
   return (
@@ -141,6 +183,16 @@ export const EditTaskScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </View>
         </View>
+
+        <WeatherAwareScheduling 
+          task={task}
+          onUpdate={handleTaskUpdate}
+        />
+        
+        <TaskDocumentation
+          taskId={task.id}
+          onPhotoAdded={handlePhotoAdded}
+        />
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity 

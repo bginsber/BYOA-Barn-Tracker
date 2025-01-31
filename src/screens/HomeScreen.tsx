@@ -70,7 +70,7 @@ export const HomeScreen = () => {
       medical: '💊',
       maintenance: '🔧',
       other: '📝'
-    };
+    } as { [key: string]: string };
     return icons[category] || '📝';
   };
 

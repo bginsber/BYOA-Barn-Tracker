@@ -9,8 +9,35 @@ export const taskService = {
   },
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<void> {
-    const taskRef = doc(db, 'tasks', taskId);
-    await updateDoc(taskRef, updates);
+    try {
+      const taskRef = doc(db, 'tasks', taskId);
+      
+      // Remove undefined values to prevent overwriting with undefined
+      const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Recursively remove undefined values from nested objects
+      const cleanObject = (obj: any): any => {
+        if (typeof obj !== 'object' || obj === null) return obj;
+        if (Array.isArray(obj)) return obj.map(cleanObject);
+        return Object.entries(obj).reduce((acc, [k, v]) => {
+          if (v !== undefined) {
+            acc[k] = cleanObject(v);
+          }
+          return acc;
+        }, {} as Record<string, any>);
+      };
+      const finalUpdates = cleanObject(cleanUpdates);
+
+      await updateDoc(taskRef, finalUpdates);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
   },
 
   async deleteTask(taskId: string): Promise<void> {

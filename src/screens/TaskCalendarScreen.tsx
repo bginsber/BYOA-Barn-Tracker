@@ -8,10 +8,11 @@ import {
   Platform 
 } from 'react-native';
 import { Task, CompletionRecord } from '../types';
-import { Calendar, MarkedDates } from 'react-native-calendars';
+import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
+import { MarkedDates } from 'react-native-calendars/src/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskCalendar'>;
 
@@ -103,7 +104,7 @@ export const TaskCalendarScreen: React.FC<Props> = ({ route }) => {
               textDayHeaderFontSize: 14
             }}
             markedDates={getMarkedDates()}
-            onDayPress={(day) => setSelectedDate(day.dateString)}
+            onDayPress={(day: any) => setSelectedDate(day.dateString)}
             enableSwipeMonths={true}
             markingType="period"
           />

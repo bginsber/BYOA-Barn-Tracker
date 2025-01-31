@@ -15,6 +15,23 @@ export interface Task {
   bestStreak: number;
   lastCompletedDate?: string;
   priority?: 'low' | 'medium' | 'high';
+  photos?: string[];
+  scheduledTime?: {
+    hour: number;
+    minute: number;
+    weatherDependent?: boolean;
+    weatherConditions?: {
+      maxTemp?: number;
+      minTemp?: number;
+      noRain?: boolean;
+      maxWindSpeed?: number;
+    };
+  };
+  notifications?: {
+    enabled: boolean;
+    sound: 'default' | 'alarm';
+    reminderMinutes: number;
+  };
 }
 
 export interface CompletionRecord {
@@ -47,4 +64,16 @@ export type RootStackParamList = {
   };
 };
 
-export type NavigationProp = NativeStackNavigationProp<RootStackParamList>; 
+export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+export interface Horse {
+  id: string;
+  name: string;
+  age: number;
+  weight: number;
+  hairLength: 'clipped' | 'short' | 'medium' | 'long';
+  blanketPreferences?: {
+    tempThreshold: number;
+    preferredWeight: 'light' | 'medium' | 'heavy';
+  };
+} 
