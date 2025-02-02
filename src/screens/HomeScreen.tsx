@@ -7,7 +7,9 @@ import {
   StyleSheet, 
   RefreshControl,
   Animated,
-  Platform
+  Platform,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Task } from '../types';
 import { taskService } from '../services/taskService';
@@ -15,37 +17,56 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-// import { useAuth } from '../hooks/useAuth'; // We'll create this later
+import { useAuth } from '../hooks/useAuth';
 
 export const HomeScreen = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  // const { user, loading } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  useEffect(() => {
-    loadTasks(); // Initial load
-    
-    const intervalId = setInterval(() => {
-      loadTasks();
-    }, 30000); // 30 seconds
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, []);
-
-  const loadTasks = async () => {
+  const fetchTasks = async () => {
     try {
-      const fetchedTasks = await taskService.getTasks('dummyUserId');
+      setLoading(true);
+      setError(null);
+      
+      if (!user) {
+        console.log('❌ No authenticated user found in HomeScreen');
+        setError('Please log in to view tasks');
+        return;
+      }
+
+      console.log('🔄 HomeScreen: Fetching tasks for user:', user.uid);
+      const fetchedTasks = await taskService.getTasks();
+      console.log('✅ HomeScreen: Fetched tasks:', fetchedTasks.length);
       setTasks(fetchedTasks);
-    } catch (error) {
-      console.error('Error loading tasks:', error);
+    } catch (err) {
+      console.error('❌ HomeScreen: Error fetching tasks:', err);
+      setError('Failed to load tasks. Please try again.');
+      Alert.alert('Error', 'Failed to load tasks. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    console.log('🔄 HomeScreen: Auth state changed:', user ? `User ${user.uid} present` : 'No user');
+    if (user) {
+      console.log('👤 HomeScreen: User authenticated, fetching tasks');
+      fetchTasks();
+    } else {
+      console.log('⚠️ HomeScreen: No user authenticated');
+      setTasks([]);
+      setLoading(false);
+    }
+  }, [user]);
+
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await loadTasks();
+    await fetchTasks();
     setRefreshing(false);
   }, []);
 
@@ -57,7 +78,7 @@ export const HomeScreen = () => {
 
     try {
       await taskService.toggleTaskCompletion(taskId, !completed);
-      await loadTasks(); // Reload tasks after update
+      await fetchTasks(); // Reload tasks after update
     } catch (error) {
       console.error('Error toggling task:', error);
     }
@@ -78,7 +99,7 @@ export const HomeScreen = () => {
     return (
       <View style={styles.taskCard}>
         <TouchableOpacity 
-          style={styles.taskContainer}
+          style={[styles.taskContainer, { pointerEvents: 'auto' }]}
           onPress={() => handleToggleTask(item.id, item.completed)}
           activeOpacity={0.7}
         >
@@ -150,32 +171,30 @@ export const HomeScreen = () => {
     );
   };
 
-  // if (loading) {
-  //   return (
-  //     <View style={styles.container}>
-  //       <Text>Loading...</Text>
-  //     </View>
-  //   );
-  // }
-
-  // if (!user) {
-  //   return (
-  //     <View style={styles.container}>
-  //       <Text>Please log in to view tasks</Text>
-  //     </View>
-  //   );
-  // }
-
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Daily Tasks</Text>
-      {tasks.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="list" size={48} color="#d1d5db" />
-          <Text style={styles.emptyText}>No tasks yet</Text>
-          <Text style={styles.emptySubtext}>
-            Add some tasks to get started with your barn routine
-          </Text>
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={styles.loadingText}>Loading tasks...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchTasks}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : tasks.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No tasks found</Text>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddTask')}
+          >
+            <Text style={styles.addButtonText}>Add Your First Task</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -200,7 +219,7 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
   },
   header: {
     fontSize: 28,
@@ -217,13 +236,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: Platform.OS === 'ios' ? 0 : 1,
-    borderColor: Platform.OS === 'ios' ? undefined : '#f0f0f0',
+    ...Platform.select({
+      ios: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
+      },
+      android: {
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
+      }
+    }),
   },
   taskContainer: {
     flexDirection: 'row',
@@ -315,22 +340,57 @@ const styles = StyleSheet.create({
     top: 12,
     padding: 4,
   },
-  emptyState: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ff0000',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginTop: 16,
+    color: '#666',
+    marginBottom: 20,
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginTop: 8,
+  addButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 }); 

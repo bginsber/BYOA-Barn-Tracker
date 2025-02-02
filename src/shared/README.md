@@ -1,0 +1,3 @@
+# shared
+
+This directory contains...

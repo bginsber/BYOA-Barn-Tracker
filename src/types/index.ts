@@ -1,67 +1,73 @@
+import { NavigatorScreenParams } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 export interface Task {
   id: string;
   title: string;
   description?: string;
-  completed: boolean;
-  createdAt: number; // timestamp
-  completedAt?: number; // timestamp
-  userId: string;
   category: TaskCategory;
   frequency: TaskFrequency;
+  priority: TaskPriority;
+  completed: boolean;
   completionHistory: CompletionRecord[];
   currentStreak: number;
   bestStreak: number;
-  lastCompletedDate?: string;
-  priority?: 'low' | 'medium' | 'high';
-  photos?: string[];
+  createdAt: number;
+  userId: string;
   scheduledTime?: {
     hour: number;
     minute: number;
-    weatherDependent?: boolean;
+    weatherDependent: boolean;
     weatherConditions?: {
-      maxTemp?: number;
-      minTemp?: number;
-      noRain?: boolean;
-      maxWindSpeed?: number;
+      noRain: boolean;
+      maxTemp: number;
+      minTemp: number;
+      maxWindSpeed: number;
     };
   };
-  notifications?: {
-    enabled: boolean;
-    sound: 'default' | 'alarm';
-    reminderMinutes: number;
+  horseDetails?: {
+    age: number;
+    weight: number;
+    hairLength: string;
+  };
+  location?: {
+    latitude: number;
+    longitude: number;
   };
 }
+
+export type TaskCategory = 'grooming' | 'feeding' | 'medical' | 'maintenance' | 'other';
+export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'annual';
+export type TaskPriority = 'low' | 'medium' | 'high';
 
 export interface CompletionRecord {
-  date: string;
   timestamp: number;
+  weather?: {
+    temperature: number;
+    condition: string;
+    windSpeed: number;
+  };
+  photos?: string[];
+  notes?: string;
 }
 
-export type TaskCategory = 
-  | 'grooming'
-  | 'feeding'
-  | 'medical'
-  | 'maintenance'
-  | 'other';
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+};
 
-export type TaskFrequency = 
-  | 'daily'
-  | 'weekly'
-  | 'monthly'
-  | 'annual'
-  | 'once';
+export type MainTabParamList = {
+  Home: undefined;
+  Tasks: undefined;
+};
 
 export type RootStackParamList = {
-  Home: undefined;
+  Auth: NavigatorScreenParams<AuthStackParamList>;
+  Main: NavigatorScreenParams<MainTabParamList>;
   AddTask: undefined;
-  EditTask: {
-    task: Task;
-  };
-  TaskCalendar: {
-    task: Task;
-  };
+  EditTask: { task: Task };
+  TaskCalendar: { task: Task };
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -71,9 +77,11 @@ export interface Horse {
   name: string;
   age: number;
   weight: number;
-  hairLength: 'clipped' | 'short' | 'medium' | 'long';
+  hairLength: string;
+  coatCondition: string;
   blanketPreferences?: {
-    tempThreshold: number;
-    preferredWeight: 'light' | 'medium' | 'heavy';
+    minTemp: number;
+    maxTemp: number;
+    preferredBlanketWeight: string;
   };
 } 

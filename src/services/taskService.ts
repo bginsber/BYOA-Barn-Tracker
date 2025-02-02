@@ -1,18 +1,103 @@
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, orderBy, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, orderBy, getDoc, Firestore } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
 import { Task, CompletionRecord } from '../types';
+
+// Type assertion for db
+const firestore: Firestore = db;
 
 export const taskService = {
   async createTask(task: Omit<Task, 'id'>): Promise<string> {
-    const docRef = await addDoc(collection(db, 'tasks'), task);
-    return docRef.id;
+    console.log('🔄 Creating task...');
+    const user = auth.currentUser;
+    if (!user) {
+      console.error('❌ No authenticated user found');
+      throw new Error('Must be logged in to create tasks');
+    }
+
+    console.log('👤 Creating task for user:', user.uid);
+
+    const taskWithDefaults = {
+      ...task,
+      userId: user.uid,
+      createdAt: Date.now(),
+      completed: false,
+      completionHistory: [],
+      currentStreak: 0,
+      bestStreak: 0,
+      sharedWith: {},  // Initialize empty sharedWith map
+    };
+
+    console.log('Task with defaults:', taskWithDefaults);
+
+    try {
+      const docRef = await addDoc(collection(firestore, 'tasks'), taskWithDefaults);
+      console.log('✅ Task created successfully with ID:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('❌ Error creating task:', error);
+      throw error;
+    }
+  },
+
+  async getTasks(): Promise<Task[]> {
+    console.log('🔄 Fetching tasks...');
+    const user = auth.currentUser;
+    if (!user) {
+      console.error('❌ No authenticated user found');
+      throw new Error('Must be logged in to fetch tasks');
+    }
+
+    console.log('👤 Fetching tasks for user:', user.uid);
+
+    try {
+      // Query for tasks where user is owner OR has shared access
+      const userTasksQuery = query(
+        collection(firestore, 'tasks'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+
+      const sharedTasksQuery = query(
+        collection(firestore, 'tasks'),
+        where(`sharedWith.${user.uid}`, '==', true)
+      );
+
+      const [userTasksSnapshot, sharedTasksSnapshot] = await Promise.all([
+        getDocs(userTasksQuery),
+        getDocs(sharedTasksQuery)
+      ]);
+
+      const userTasks = userTasksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Task));
+
+      const sharedTasks = sharedTasksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Task));
+
+      const allTasks = [...userTasks, ...sharedTasks];
+      console.log(`✅ Found ${allTasks.length} tasks (${userTasks.length} owned, ${sharedTasks.length} shared)`);
+
+      return allTasks;
+    } catch (error) {
+      console.error('❌ Error fetching tasks:', error);
+      throw error;
+    }
   },
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in to update tasks');
+
     try {
-      const taskRef = doc(db, 'tasks', taskId);
+      const taskRef = doc(firestore, 'tasks', taskId);
+      const taskDoc = await getDoc(taskRef);
       
-      // Remove undefined values to prevent overwriting with undefined
+      if (!taskDoc.exists()) throw new Error('Task not found');
+      if (taskDoc.data()?.userId !== user.uid) throw new Error('Not authorized to update this task');
+      
       const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
         if (value !== undefined) {
           acc[key] = value;
@@ -20,20 +105,7 @@ export const taskService = {
         return acc;
       }, {} as Record<string, any>);
 
-      // Recursively remove undefined values from nested objects
-      const cleanObject = (obj: any): any => {
-        if (typeof obj !== 'object' || obj === null) return obj;
-        if (Array.isArray(obj)) return obj.map(cleanObject);
-        return Object.entries(obj).reduce((acc, [k, v]) => {
-          if (v !== undefined) {
-            acc[k] = cleanObject(v);
-          }
-          return acc;
-        }, {} as Record<string, any>);
-      };
-      const finalUpdates = cleanObject(cleanUpdates);
-
-      await updateDoc(taskRef, finalUpdates);
+      await updateDoc(taskRef, cleanUpdates);
     } catch (error) {
       console.error('Error updating task:', error);
       throw error;
@@ -41,33 +113,27 @@ export const taskService = {
   },
 
   async deleteTask(taskId: string): Promise<void> {
-    const taskRef = doc(db, 'tasks', taskId);
-    await deleteDoc(taskRef);
-  },
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in to delete tasks');
 
-  async getTasks(userId: string): Promise<Task[]> {
     try {
-      const tasksQuery = query(
-        collection(db, 'tasks'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
-      );
+      const taskRef = doc(firestore, 'tasks', taskId);
+      const taskDoc = await getDoc(taskRef);
       
-      const querySnapshot = await getDocs(tasksQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Task));
+      if (!taskDoc.exists()) throw new Error('Task not found');
+      if (taskDoc.data()?.userId !== user.uid) throw new Error('Not authorized to delete this task');
+      
+      await deleteDoc(taskRef);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
-      return [];
+      console.error('Error deleting task:', error);
+      throw error;
     }
   },
 
   async toggleTaskCompletion(taskId: string, completed: boolean): Promise<void> {
     try {
       // Get direct reference to the document instead of querying
-      const taskRef = doc(db, 'tasks', taskId);
+      const taskRef = doc(firestore, 'tasks', taskId);
       const taskDoc = await getDoc(taskRef);
 
       // Check if document exists
@@ -118,7 +184,7 @@ export const taskService = {
   },
 
   async getTaskHistory(taskId: string): Promise<CompletionRecord[]> {
-    const taskDoc = await getDocs(query(collection(db, 'tasks'), where('id', '==', taskId)));
+    const taskDoc = await getDocs(query(collection(firestore, 'tasks'), where('id', '==', taskId)));
     const task = taskDoc.docs[0].data() as Task;
     return task.completionHistory || [];
   }
