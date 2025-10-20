@@ -10,6 +10,8 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Tasks: undefined;
+  Journal: undefined;
+  Sage: undefined;
 };
 
 export type RootStackParamList = {

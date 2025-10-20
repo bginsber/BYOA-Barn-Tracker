@@ -5,6 +5,7 @@ import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import AddTaskScreen from '../screens/AddTaskScreen';
+import { JournalScreen } from '../screens/JournalScreen';
 import { SageScreen } from '../screens/SageScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -38,6 +39,16 @@ export const MainNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
+        }}
+      />
+      <Tab.Screen
+        name="Journal"
+        component={JournalScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="journal-outline" size={size} color={color} />
+          ),
+          headerShown: false,
         }}
       />
       <Tab.Screen
